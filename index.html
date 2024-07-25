@@ -50,6 +50,9 @@
     <script>
         let globalData = {};
         let filteredData = {};
+        let ticketsChart = null;
+        let responseTimeChart = null;
+        let categoryChart = null;
 
         async function loadData() {
             try {
@@ -207,8 +210,13 @@
                 return;
             }
 
+            // Destruir la instancia anterior del gráfico si existe
+            if (ticketsChart) {
+                ticketsChart.destroy();
+            }
+
             const ctx = document.getElementById('ticketsChart').getContext('2d');
-            new Chart(ctx, {
+            ticketsChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: Object.values(filteredData.ticketsByMonth).map(d => new Date(0, d.month).toLocaleString('es-ES', { month: 'long' })),
@@ -238,8 +246,12 @@
         }
 
         function updateResponseTimeChart() {
+            if (responseTimeChart) {
+                responseTimeChart.destroy();
+            }
+
             const ctx = document.getElementById('responseTimeChart').getContext('2d');
-            new Chart(ctx, {
+            responseTimeChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: Object.values(filteredData.ticketsByMonth).map(d => new Date(0, d.month).toLocaleString('es-ES', { month: 'long' })),
@@ -262,8 +274,12 @@
         }
 
         function updateCategoryChart() {
+            if (categoryChart) {
+                categoryChart.destroy();
+            }
+
             const ctx = document.getElementById('categoryChart').getContext('2d');
-            new Chart(ctx, {
+            categoryChart = new Chart(ctx, {
                 type: 'pie',
                 data: {
                     labels: filteredData.categories,
