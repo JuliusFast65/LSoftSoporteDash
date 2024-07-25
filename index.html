@@ -36,21 +36,11 @@
         <div class="bg-white p-6 rounded-lg shadow">
             <h2 class="text-xl font-semibold mb-4">Filtros</h2>
             <div class="flex flex-wrap gap-4">
-                <select id="monthFilter" class="p-2 border rounded">
-                    <option value="">Todos los meses</option>
-                    <option value="0">Enero</option>
-                    <option value="1">Febrero</option>
-                    <option value="2">Marzo</option>
-                    <option value="3">Abril</option>
-                    <option value="4">Mayo</option>
-                    <option value="5">Junio</option>
+                <select id="yearFilter" class="p-2 border rounded">
+                    <!-- Opciones dinámicas de año -->
                 </select>
                 <select id="categoryFilter" class="p-2 border rounded">
-                    <option value="">Todas las categorías</option>
-                    <option value="Hardware">Hardware</option>
-                    <option value="Software">Software</option>
-                    <option value="Red">Red</option>
-                    <option value="Otro">Otro</option>
+                    <!-- Opciones dinámicas de categoría -->
                 </select>
             </div>
         </div>
@@ -58,6 +48,7 @@
 
     <script>
         let globalData = {};
+        let filteredData = {};
 
         async function loadData() {
             try {
@@ -68,7 +59,8 @@
                 const data = await response.json();
                 console.log('Datos cargados:', data); // Añade esta línea para verificar los datos en la consola
                 globalData = processData(data);
-                updateCharts();
+                populateFilters(globalData);
+                applyFilters(); // Aplica los filtros iniciales para el año actual
                 updateLastUpdated(data.last_updated);
             } catch (error) {
                 console.error('Error al cargar los datos:', error);
@@ -80,28 +72,35 @@
         function processData(data) {
             const ticketsByMonth = {};
             const responseTime = [];
-            const categories = {};
+            const categories = new Set();
+            const currentYear = new Date().getFullYear();
 
             data.tickets.forEach(ticket => {
-                const month = new Date(ticket["Fecha de creación"]).getMonth();
-                if (!ticketsByMonth[month]) {
-                    ticketsByMonth[month] = { month: month, opened: 0, closed: 0 };
+                const creationDate = new Date(ticket["Fecha de creación"]);
+                const year = creationDate.getFullYear();
+                const month = creationDate.getMonth();
+
+                if (!ticketsByMonth[year]) {
+                    ticketsByMonth[year] = {};
                 }
-                ticketsByMonth[month].opened += 1;
+
+                if (!ticketsByMonth[year][month]) {
+                    ticketsByMonth[year][month] = { month: month, opened: 0, closed: 0 };
+                }
+
+                ticketsByMonth[year][month].opened += 1;
                 if (ticket["Estado actual"] === "Cerrado" || ticket["Estado actual"] === "Resuelto") {
-                    ticketsByMonth[month].closed += 1;
+                    ticketsByMonth[year][month].closed += 1;
                 }
+
                 const category = ticket["Temas de ayuda"];
-                if (!categories[category]) {
-                    categories[category] = 0;
-                }
-                categories[category] += 1;
+                categories.add(category);
             });
 
             return {
-                ticketsByMonth: Object.values(ticketsByMonth),
+                ticketsByMonth: ticketsByMonth,
                 responseTime: calculateResponseTime(data.tickets),
-                categories: categories
+                categories: Array.from(categories)
             };
         }
 
@@ -116,6 +115,26 @@
             return responseTimes;
         }
 
+        function populateFilters(data) {
+            const yearFilter = document.getElementById('yearFilter');
+            const categoryFilter = document.getElementById('categoryFilter');
+
+            const years = Object.keys(data.ticketsByMonth).sort((a, b) => b - a);
+            years.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                yearFilter.appendChild(option);
+            });
+
+            data.categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                categoryFilter.appendChild(option);
+            });
+        }
+
         function updateLastUpdated(timestamp) {
             const lastUpdatedElement = document.getElementById('lastUpdated');
             if (lastUpdatedElement) {
@@ -127,24 +146,43 @@
         function useExampleData() {
             globalData = {
                 lastUpdated: new Date().toISOString(),
-                ticketsByMonth: [
-                    { month: 'Enero', opened: 12, closed: 10 },
-                    { month: 'Febrero', opened: 19, closed: 15 },
-                    { month: 'Marzo', opened: 3, closed: 5 },
-                    { month: 'Abril', opened: 5, closed: 4 },
-                    { month: 'Mayo', opened: 2, closed: 3 },
-                    { month: 'Junio', opened: 3, closed: 2 }
-                ],
+                ticketsByMonth: {
+                    '2024': {
+                        0: { month: 'Enero', opened: 12, closed: 10 },
+                        1: { month: 'Febrero', opened: 19, closed: 15 },
+                        2: { month: 'Marzo', opened: 3, closed: 5 },
+                        3: { month: 'Abril', opened: 5, closed: 4 },
+                        4: { month: 'Mayo', opened: 2, closed: 3 },
+                        5: { month: 'Junio', opened: 3, closed: 2 }
+                    }
+                },
                 responseTime: [1, 2, 3, 2, 1, 2],
-                categories: {
-                    'Hardware': 30,
-                    'Software': 45,
-                    'Red': 15,
-                    'Otro': 10
-                }
+                categories: ['Hardware', 'Software', 'Red', 'Otro']
             };
-            updateCharts();
+            populateFilters(globalData);
+            applyFilters();
             updateLastUpdated(globalData.lastUpdated);
+        }
+
+        function applyFilters() {
+            const yearFilter = document.getElementById('yearFilter').value || new Date().getFullYear();
+            const categoryFilter = document.getElementById('categoryFilter').value;
+
+            filteredData.ticketsByMonth = globalData.ticketsByMonth[yearFilter];
+            filteredData.responseTime = globalData.responseTime;
+            filteredData.categories = globalData.categories;
+
+            if (categoryFilter) {
+                filteredData.ticketsByMonth = Object.fromEntries(Object.entries(filteredData.ticketsByMonth).map(([month, data]) => {
+                    return [month, {
+                        ...data,
+                        opened: data.opened, // Implementar lógica para filtrar por categoría si es necesario
+                        closed: data.closed
+                    }];
+                }));
+            }
+
+            updateCharts();
         }
 
         function updateCharts() {
@@ -154,8 +192,8 @@
         }
 
         function updateTicketsChart() {
-            if (!globalData.ticketsByMonth || !Array.isArray(globalData.ticketsByMonth)) {
-                console.error('La estructura de datos de ticketsByMonth es incorrecta:', globalData.ticketsByMonth);
+            if (!filteredData.ticketsByMonth || !Array.isArray(Object.values(filteredData.ticketsByMonth))) {
+                console.error('La estructura de datos de ticketsByMonth es incorrecta:', filteredData.ticketsByMonth);
                 return;
             }
 
@@ -163,16 +201,16 @@
             new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: globalData.ticketsByMonth.map(d => d.month),
+                    labels: Object.values(filteredData.ticketsByMonth).map(d => d.month),
                     datasets: [{
                         label: 'Tickets Abiertos',
-                        data: globalData.ticketsByMonth.map(d => d.opened),
+                        data: Object.values(filteredData.ticketsByMonth).map(d => d.opened),
                         backgroundColor: 'rgba(255, 99, 132, 0.2)',
                         borderColor: 'rgba(255, 99, 132, 1)',
                         borderWidth: 1
                     }, {
                         label: 'Tickets Cerrados',
-                        data: globalData.ticketsByMonth.map(d => d.closed),
+                        data: Object.values(filteredData.ticketsByMonth).map(d => d.closed),
                         backgroundColor: 'rgba(54, 162, 235, 0.2)',
                         borderColor: 'rgba(54, 162, 235, 1)',
                         borderWidth: 1
@@ -194,10 +232,10 @@
             new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: globalData.ticketsByMonth.map(d => d.month),
+                    labels: Object.values(filteredData.ticketsByMonth).map(d => d.month),
                     datasets: [{
                         label: 'Tiempo de Respuesta Promedio (horas)',
-                        data: globalData.responseTime,
+                        data: filteredData.responseTime,
                         borderColor: 'rgba(75, 192, 192, 1)',
                         tension: 0.1
                     }]
@@ -218,9 +256,11 @@
             new Chart(ctx, {
                 type: 'pie',
                 data: {
-                    labels: Object.keys(globalData.categories),
+                    labels: filteredData.categories,
                     datasets: [{
-                        data: Object.values(globalData.categories),
+                        data: filteredData.categories.map(category => {
+                            return globalData.tickets.filter(ticket => ticket["Temas de ayuda"] === category).length;
+                        }),
                         backgroundColor: [
                             'rgba(255, 99, 132, 0.2)',
                             'rgba(54, 162, 235, 0.2)',
@@ -252,20 +292,10 @@
         }
 
         document.getElementById('loadDataBtn').addEventListener('click', loadData);
-        document.getElementById('monthFilter').addEventListener('change', applyFilters);
+        document.getElementById('yearFilter').addEventListener('change', applyFilters);
         document.getElementById('categoryFilter').addEventListener('change', applyFilters);
 
-        function applyFilters() {
-            const monthFilter = document.getElementById('monthFilter').value;
-            const categoryFilter = document.getElementById('categoryFilter').value;
-            
-            // Aquí implementarías la lógica para filtrar los datos según los valores seleccionados
-            console.log('Filtros aplicados:', { month: monthFilter, category: categoryFilter });
-            // Después de filtrar, llamarías a updateCharts() con los datos filtrados
-        }
-
         // Carga inicial de datos
-        // useExampleData();
         loadData();
     </script>
 </body>
