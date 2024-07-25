@@ -126,13 +126,13 @@
                 const assessor = ticket["Agente asignado"];
                 assessors.add(assessor);
 
-                const company = ticket["Empresa"];
+                const company = ticket["Nombre de Empresa propietaria de la Licencia"];
                 if (!companies[company]) {
                     companies[company] = 0;
                 }
                 companies[company] += 1;
 
-                const user = ticket["Usuario"];
+                const user = ticket["De"];
                 if (!users[user]) {
                     users[user] = 0;
                 }
