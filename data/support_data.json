@@ -6,9 +6,10 @@
     {"month": "Marzo", "opened": 3, "closed": 5},
     {"month": "Abril", "opened": 5, "closed": 4},
     {"month": "Mayo", "opened": 2, "closed": 3},
-    {"month": "Junio", "opened": 3, "closed": 2}
+    {"month": "Junio", "opened": 3, "closed": 2},
+    {"month": "Julio", "opened": 3, "closed": 2}
   ],
-  "responseTime": [1, 2, 3, 2, 1, 2],
+  "responseTime": [1, 2, 3, 2, 1, 2, 3],
   "categories": {
     "Hardware": 30,
     "Software": 45,
