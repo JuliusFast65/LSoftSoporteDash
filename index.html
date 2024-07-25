@@ -643,21 +643,31 @@
                                 <th>Temas de Ayuda</th>
                                 <th>Nombre de Empresa</th>
                                 <th>De</th>
+                                <th>Tiempo de Respuesta (horas)</th>
+                                <th>Tiempo con Asesor (horas)</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${tickets.map(ticket => `
-                                <tr>
-                                    <td>${ticket.ID}</td>
-                                    <td>${ticket["Fecha de creación"]}</td>
-                                    <td>${ticket["Última actualización"]}</td>
-                                    <td>${ticket["Estado actual"]}</td>
-                                    <td>${ticket["Agente asignado"]}</td>
-                                    <td>${ticket["Temas de ayuda"]}</td>
-                                    <td>${ticket["Nombre de Empresa propietaria de la Licencia"]}</td>
-                                    <td>${ticket["De"]}</td>
-                                </tr>
-                            `).join('')}
+                            ${tickets.map(ticket => {
+                                const creationTime = new Date(ticket["Fecha de creación"]);
+                                const closingTime = new Date(ticket["Última actualización"]);
+                                const responseTime = (closingTime - creationTime) / 3600000; // Convertir a horas
+                                const timeWithAssessor = (closingTime - creationTime) / 3600000; // Convertir a horas
+                                return `
+                                    <tr>
+                                        <td>${ticket.ID}</td>
+                                        <td>${ticket["Fecha de creación"]}</td>
+                                        <td>${ticket["Última actualización"]}</td>
+                                        <td>${ticket["Estado actual"]}</td>
+                                        <td>${ticket["Agente asignado"]}</td>
+                                        <td>${ticket["Temas de ayuda"]}</td>
+                                        <td>${ticket["Nombre de Empresa propietaria de la Licencia"]}</td>
+                                        <td>${ticket["De"]}</td>
+                                        <td>${responseTime.toFixed(2)}</td>
+                                        <td>${timeWithAssessor.toFixed(2)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
                         </tbody>
                     </table>
                 </body>
