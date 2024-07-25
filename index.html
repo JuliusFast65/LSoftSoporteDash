@@ -49,15 +49,15 @@
         </div>
         
         <div class="bg-white p-6 rounded-lg shadow mb-8">
-            <h2 class="text-xl font-semibold mb-4">Distribución de Tickets por Categoría</h2>
+            <h2 class="text-xl font-semibold mb-4">Distribución de Tickets por Categoría (Top 10)</h2>
             <canvas id="categoryChart"></canvas>
         </div>
         <div class="bg-white p-6 rounded-lg shadow mb-8">
-            <h2 class="text-xl font-semibold mb-4">Empresas que Han Solicitado Asistencia</h2>
+            <h2 class="text-xl font-semibold mb-4">Empresas que Han Solicitado Asistencia (Top 10)</h2>
             <canvas id="companiesChart"></canvas>
         </div>
         <div class="bg-white p-6 rounded-lg shadow mb-8">
-            <h2 class="text-xl font-semibold mb-4">Usuarios que Han Solicitado Asistencia</h2>
+            <h2 class="text-xl font-semibold mb-4">Usuarios que Han Solicitado Asistencia (Top 10)</h2>
             <canvas id="usersChart"></canvas>
         </div>
     </div>
@@ -75,7 +75,7 @@
 
         async function loadData() {
             try {
-                const response = await fetch('data/tickets_data.json'); // Cambia a la URL correcta
+                const response = await fetch('https://juliusfast65.github.io/LSoftSoporteDash/data/tickets_data.json');
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -94,16 +94,25 @@
         }
 
         function processData(data) {
+            const excludedAssessors = ["1", "53", "27", "15", "35", "38"];
             const ticketsByMonth = {};
             const responseTime = [];
-            const categories = new Set();
+            const categories = new Map();
             const assessors = new Set();
-            const companies = {};
-            const users = {};
+            const companies = new Map();
+            const users = new Map();
             const currentYear = new Date().getFullYear();
+            const threeMonthsInMilliseconds = 90 * 24 * 60 * 60 * 1000;
 
             data.tickets.forEach(ticket => {
                 const creationDate = new Date(ticket["Fecha de creación"]);
+                const closingDate = new Date(ticket["Última actualización"]);
+                const duration = closingDate - creationDate;
+
+                if (duration > threeMonthsInMilliseconds || excludedAssessors.includes(ticket["Agente asignado"])) {
+                    return;
+                }
+
                 const year = creationDate.getFullYear();
                 const month = creationDate.getMonth();
 
@@ -121,43 +130,37 @@
                 }
 
                 const category = ticket["Temas de ayuda"];
-                categories.add(category);
+                if (!categories.has(category)) {
+                    categories.set(category, 0);
+                }
+                categories.set(category, categories.get(category) + 1);
 
                 const assessor = ticket["Agente asignado"];
                 assessors.add(assessor);
 
                 const company = ticket["Nombre de Empresa propietaria de la Licencia"];
-                if (!companies[company]) {
-                    companies[company] = 0;
+                if (!companies.has(company)) {
+                    companies.set(company, 0);
                 }
-                companies[company] += 1;
+                companies.set(company, companies.get(company) + 1);
 
                 const user = ticket["De"];
-                if (!users[user]) {
-                    users[user] = 0;
+                if (!users.has(user)) {
+                    users.set(user, 0);
                 }
-                users[user] += 1;
+                users.set(user, users.get(user) + 1);
+
+                responseTime.push(duration / 3600000); // Convertir a horas
             });
 
             return {
                 ticketsByMonth: ticketsByMonth,
-                responseTime: calculateResponseTime(data.tickets),
-                categories: Array.from(categories),
-                assessors: Array.from(assessors),
-                companies: companies,
-                users: users
+                responseTime: responseTime,
+                categories: Array.from(categories.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10),
+                assessors: Array.from(assessors).filter(assessor => !excludedAssessors.includes(assessor)),
+                companies: Array.from(companies.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10),
+                users: Array.from(users.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10)
             };
-        }
-
-        function calculateResponseTime(tickets) {
-            const responseTimes = [];
-            tickets.forEach(ticket => {
-                const creationTime = new Date(ticket["Fecha de creación"]);
-                const closingTime = new Date(ticket["Última actualización"]);
-                const responseTime = (closingTime - creationTime) / 3600000; // Convertir a horas
-                responseTimes.push(responseTime);
-            });
-            return responseTimes;
         }
 
         function populateFilters(data) {
@@ -178,7 +181,7 @@
                 yearFilter.appendChild(option);
             });
 
-            data.categories.forEach(category => {
+            data.categories.forEach(([category]) => {
                 const option = document.createElement('option');
                 option.value = category;
                 option.textContent = category;
@@ -218,10 +221,10 @@
                     }
                 },
                 responseTime: [1, 2, 3, 2, 1, 2],
-                categories: ['Hardware', 'Software', 'Red', 'Otro'],
+                categories: [['Hardware', 5], ['Software', 3], ['Red', 2]],
                 assessors: ['Asesor 1', 'Asesor 2'],
-                companies: {'Empresa A': 5, 'Empresa B': 3},
-                users: {'Usuario 1': 4, 'Usuario 2': 3},
+                companies: [['Empresa A', 5], ['Empresa B', 3]],
+                users: [['Usuario 1', 4], ['Usuario 2', 3]],
                 tickets: [] // Ejemplo de datos de tickets
             };
             populateFilters(globalData);
@@ -237,6 +240,8 @@
             filteredData.ticketsByMonth = globalData.ticketsByMonth[yearFilter];
             filteredData.responseTime = globalData.responseTime;
             filteredData.categories = globalData.categories;
+            filteredData.companies = globalData.companies;
+            filteredData.users = globalData.users;
 
             if (categoryFilter || assessorFilter) {
                 filteredData.ticketsByMonth = Object.fromEntries(Object.entries(filteredData.ticketsByMonth).map(([month, data]) => {
@@ -349,22 +354,32 @@
             categoryChart = new Chart(ctx, {
                 type: 'pie',
                 data: {
-                    labels: filteredData.categories,
+                    labels: filteredData.categories.map(([category]) => category),
                     datasets: [{
-                        data: filteredData.categories.map(category => {
-                            return globalData.tickets.filter(ticket => ticket["Temas de ayuda"] === category).length;
-                        }),
+                        data: filteredData.categories.map(([_, count]) => count),
                         backgroundColor: [
                             'rgba(255, 99, 132, 0.2)',
                             'rgba(54, 162, 235, 0.2)',
                             'rgba(255, 206, 86, 0.2)',
-                            'rgba(75, 192, 192, 0.2)'
+                            'rgba(75, 192, 192, 0.2)',
+                            'rgba(153, 102, 255, 0.2)',
+                            'rgba(201, 203, 207, 0.2)',
+                            'rgba(255, 159, 64, 0.2)',
+                            'rgba(255, 99, 132, 0.2)',
+                            'rgba(54, 162, 235, 0.2)',
+                            'rgba(255, 206, 86, 0.2)'
                         ],
                         borderColor: [
                             'rgba(255, 99, 132, 1)',
                             'rgba(54, 162, 235, 1)',
                             'rgba(255, 206, 86, 1)',
-                            'rgba(75, 192, 192, 1)'
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(201, 203, 207, 1)',
+                            'rgba(255, 159, 64, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)'
                         ],
                         borderWidth: 1
                     }]
@@ -377,7 +392,7 @@
                         },
                         title: {
                             display: true,
-                            text: 'Distribución de Tickets por Categoría'
+                            text: 'Distribución de Tickets por Categoría (Top 10)'
                         }
                     }
                 }
@@ -461,31 +476,24 @@
                 companiesChart.destroy();
             }
 
-            const companiesData = Object.entries(globalData.companies).sort((a, b) => b[1] - a[1]);
-            const topCompanies = companiesData.slice(0, 5);
-            const otherCompaniesCount = companiesData.slice(5).reduce((sum, [company, count]) => sum + count, 0);
-
-            const labels = topCompanies.map(([company]) => company);
-            const data = topCompanies.map(([company, count]) => count);
-            if (otherCompaniesCount > 0) {
-                labels.push('Otras');
-                data.push(otherCompaniesCount);
-            }
-
             const ctx = document.getElementById('companiesChart').getContext('2d');
             companiesChart = new Chart(ctx, {
                 type: 'pie',
                 data: {
-                    labels: labels,
+                    labels: filteredData.companies.map(([company]) => company),
                     datasets: [{
-                        data: data,
+                        data: filteredData.companies.map(([_, count]) => count),
                         backgroundColor: [
                             'rgba(255, 99, 132, 0.2)',
                             'rgba(54, 162, 235, 0.2)',
                             'rgba(255, 206, 86, 0.2)',
                             'rgba(75, 192, 192, 0.2)',
                             'rgba(153, 102, 255, 0.2)',
-                            'rgba(201, 203, 207, 0.2)'
+                            'rgba(201, 203, 207, 0.2)',
+                            'rgba(255, 159, 64, 0.2)',
+                            'rgba(255, 99, 132, 0.2)',
+                            'rgba(54, 162, 235, 0.2)',
+                            'rgba(255, 206, 86, 0.2)'
                         ],
                         borderColor: [
                             'rgba(255, 99, 132, 1)',
@@ -493,7 +501,11 @@
                             'rgba(255, 206, 86, 1)',
                             'rgba(75, 192, 192, 1)',
                             'rgba(153, 102, 255, 1)',
-                            'rgba(201, 203, 207, 1)'
+                            'rgba(201, 203, 207, 1)',
+                            'rgba(255, 159, 64, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)'
                         ],
                         borderWidth: 1
                     }]
@@ -506,7 +518,7 @@
                         },
                         title: {
                             display: true,
-                            text: 'Empresas que Han Solicitado Asistencia'
+                            text: 'Empresas que Han Solicitado Asistencia (Top 10)'
                         }
                     }
                 }
@@ -518,31 +530,24 @@
                 usersChart.destroy();
             }
 
-            const usersData = Object.entries(globalData.users).sort((a, b) => b[1] - a[1]);
-            const topUsers = usersData.slice(0, 5);
-            const otherUsersCount = usersData.slice(5).reduce((sum, [user, count]) => sum + count, 0);
-
-            const labels = topUsers.map(([user]) => user);
-            const data = topUsers.map(([user, count]) => count);
-            if (otherUsersCount > 0) {
-                labels.push('Otros');
-                data.push(otherUsersCount);
-            }
-
             const ctx = document.getElementById('usersChart').getContext('2d');
             usersChart = new Chart(ctx, {
                 type: 'pie',
                 data: {
-                    labels: labels,
+                    labels: filteredData.users.map(([user]) => user),
                     datasets: [{
-                        data: data,
+                        data: filteredData.users.map(([_, count]) => count),
                         backgroundColor: [
                             'rgba(255, 99, 132, 0.2)',
                             'rgba(54, 162, 235, 0.2)',
                             'rgba(255, 206, 86, 0.2)',
                             'rgba(75, 192, 192, 0.2)',
                             'rgba(153, 102, 255, 0.2)',
-                            'rgba(201, 203, 207, 0.2)'
+                            'rgba(201, 203, 207, 0.2)',
+                            'rgba(255, 159, 64, 0.2)',
+                            'rgba(255, 99, 132, 0.2)',
+                            'rgba(54, 162, 235, 0.2)',
+                            'rgba(255, 206, 86, 0.2)'
                         ],
                         borderColor: [
                             'rgba(255, 99, 132, 1)',
@@ -550,7 +555,11 @@
                             'rgba(255, 206, 86, 1)',
                             'rgba(75, 192, 192, 1)',
                             'rgba(153, 102, 255, 1)',
-                            'rgba(201, 203, 207, 1)'
+                            'rgba(201, 203, 207, 1)',
+                            'rgba(255, 159, 64, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)'
                         ],
                         borderWidth: 1
                     }]
@@ -563,7 +572,7 @@
                         },
                         title: {
                             display: true,
-                            text: 'Usuarios que Han Solicitado Asistencia'
+                            text: 'Usuarios que Han Solicitado Asistencia (Top 10)'
                         }
                     }
                 }
