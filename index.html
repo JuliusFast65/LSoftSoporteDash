@@ -87,6 +87,7 @@
 
         function useExampleData() {
             globalData = {
+                lastUpdated: new Date().toISOString(),
                 ticketsByMonth: [
                     {month: 'Enero', opened: 12, closed: 10},
                     {month: 'Febrero', opened: 19, closed: 15},
@@ -104,6 +105,7 @@
                 }
             };
             updateCharts();
+            updateLastUpdated(globalData.lastUpdated);
         }
 
         function updateCharts() {
@@ -219,7 +221,8 @@
         }
 
         // Carga inicial de datos
-        useExampleData();
+        // useExampleData();
+        loadData();
     </script>
 </body>
 </html>
