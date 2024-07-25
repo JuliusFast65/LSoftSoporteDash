@@ -4,79 +4,209 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard de Soporte Listosoft</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f0f0f0;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        .chart-container {
-            margin-top: 20px;
-        }
-    </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Dashboard de Soporte Listosoft</h1>
-        <div class="chart-container">
-            <canvas id="ticketsChart"></canvas>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">Dashboard de Soporte Listosoft</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Tickets por Mes</h2>
+                <canvas id="ticketsChart"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Tiempo de Respuesta Promedio</h2>
+                <canvas id="responseTimeChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg shadow mb-8">
+            <h2 class="text-xl font-semibold mb-4">Distribución de Tickets por Categoría</h2>
+            <canvas id="categoryChart"></canvas>
+        </div>
+        
+        <div class="flex justify-center mb-8">
+            <button id="loadDataBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Cargar Nuevos Datos
+            </button>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4">Filtros</h2>
+            <div class="flex flex-wrap gap-4">
+                <select id="monthFilter" class="p-2 border rounded">
+                    <option value="">Todos los meses</option>
+                    <option value="0">Enero</option>
+                    <option value="1">Febrero</option>
+                    <option value="2">Marzo</option>
+                    <option value="3">Abril</option>
+                    <option value="4">Mayo</option>
+                    <option value="5">Junio</option>
+                </select>
+                <select id="categoryFilter" class="p-2 border rounded">
+                    <option value="">Todas las categorías</option>
+                    <option value="Hardware">Hardware</option>
+                    <option value="Software">Software</option>
+                    <option value="Red">Red</option>
+                    <option value="Otro">Otro</option>
+                </select>
+            </div>
         </div>
     </div>
 
     <script>
-        // Datos de ejemplo
-        const data = {
-            labels: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio'],
-            datasets: [{
-                label: 'Tickets Abiertos',
-                data: [12, 19, 3, 5, 2, 3],
-                backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                borderColor: 'rgba(255, 99, 132, 1)',
-                borderWidth: 1
-            }, {
-                label: 'Tickets Atendidos',
-                data: [10, 15, 5, 4, 3, 2],
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            }]
-        };
+        let globalData = {};
 
-        // Configuración del gráfico
-        const config = {
-            type: 'bar',
-            data: data,
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    title: {
-                        display: true,
-                        text: 'Tickets de Soporte por Mes'
+        async function loadData() {
+            try {
+                const response = await fetch('https://api.example.com/listosoft-data');
+                const data = await response.json();
+                globalData = data;
+                updateCharts();
+            } catch (error) {
+                console.error('Error al cargar los datos:', error);
+                alert('Error al cargar los datos. Usando datos de ejemplo.');
+                useExampleData();
+            }
+        }
+
+        function useExampleData() {
+            globalData = {
+                ticketsByMonth: [
+                    {month: 'Enero', opened: 12, closed: 10},
+                    {month: 'Febrero', opened: 19, closed: 15},
+                    {month: 'Marzo', opened: 3, closed: 5},
+                    {month: 'Abril', opened: 5, closed: 4},
+                    {month: 'Mayo', opened: 2, closed: 3},
+                    {month: 'Junio', opened: 3, closed: 2}
+                ],
+                responseTime: [1, 2, 3, 2, 1, 2],
+                categories: {
+                    'Hardware': 30,
+                    'Software': 45,
+                    'Red': 15,
+                    'Otro': 10
+                }
+            };
+            updateCharts();
+        }
+
+        function updateCharts() {
+            updateTicketsChart();
+            updateResponseTimeChart();
+            updateCategoryChart();
+        }
+
+        function updateTicketsChart() {
+            const ctx = document.getElementById('ticketsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: globalData.ticketsByMonth.map(d => d.month),
+                    datasets: [{
+                        label: 'Tickets Abiertos',
+                        data: globalData.ticketsByMonth.map(d => d.opened),
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }, {
+                        label: 'Tickets Cerrados',
+                        data: globalData.ticketsByMonth.map(d => d.closed),
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
                     }
                 }
-            },
-        };
+            });
+        }
 
-        // Crear el gráfico
-        var ctx = document.getElementById('ticketsChart').getContext('2d');
-        new Chart(ctx, config);
+        function updateResponseTimeChart() {
+            const ctx = document.getElementById('responseTimeChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: globalData.ticketsByMonth.map(d => d.month),
+                    datasets: [{
+                        label: 'Tiempo de Respuesta Promedio (horas)',
+                        data: globalData.responseTime,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCategoryChart() {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(globalData.categories),
+                    datasets: [{
+                        data: Object.values(globalData.categories),
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.2)',
+                            'rgba(54, 162, 235, 0.2)',
+                            'rgba(255, 206, 86, 0.2)',
+                            'rgba(75, 192, 192, 0.2)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Distribución de Tickets por Categoría'
+                        }
+                    }
+                }
+            });
+        }
+
+        document.getElementById('loadDataBtn').addEventListener('click', loadData);
+        document.getElementById('monthFilter').addEventListener('change', applyFilters);
+        document.getElementById('categoryFilter').addEventListener('change', applyFilters);
+
+        function applyFilters() {
+            const monthFilter = document.getElementById('monthFilter').value;
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            
+            // Aquí implementarías la lógica para filtrar los datos según los valores seleccionados
+            console.log('Filtros aplicados:', {month: monthFilter, category: categoryFilter});
+            // Después de filtrar, llamarías a updateCharts() con los datos filtrados
+        }
+
+        // Carga inicial de datos
+        useExampleData();
     </script>
 </body>
 </html>
