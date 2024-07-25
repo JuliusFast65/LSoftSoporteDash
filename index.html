@@ -94,6 +94,7 @@
 
         function processData(data) {
             const excludedAssessors = ["1", "53", "27", "15", "35", "38", "Julio Veloz"];
+            const excludedUsers = ["Mail Delivery System"];
             const ticketsByMonth = {};
             const responseTime = [];
             const categories = new Map();
@@ -138,16 +139,21 @@
                 assessors.add(assessor);
 
                 const company = ticket["Nombre de Empresa propietaria de la Licencia"];
-                if (!companies.has(company)) {
-                    companies.set(company, 0);
+                if (company) {
+                    if (!companies.has(company)) {
+                        companies.set(company, 0);
+                    }
+                    companies.set(company, companies.get(company) + 1);
                 }
-                companies.set(company, companies.get(company) + 1);
 
                 const user = ticket["De"];
-                if (!users.has(user)) {
-                    users.set(user, 0);
+                if (!excludedUsers.includes(user)) {
+                    const properUser = toProperCase(user);
+                    if (!users.has(properUser)) {
+                        users.set(properUser, 0);
+                    }
+                    users.set(properUser, users.get(properUser) + 1);
                 }
-                users.set(user, users.get(user) + 1);
 
                 responseTime.push(duration / 3600000); // Convertir a horas
             });
@@ -157,9 +163,15 @@
                 responseTime: responseTime,
                 categories: Array.from(categories.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10),
                 assessors: Array.from(assessors).filter(assessor => !excludedAssessors.includes(assessor)),
-                companies: Array.from(companies.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10),
+                companies: Array.from(companies.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, count]) => [name.toUpperCase(), count]),
                 users: Array.from(users.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10)
             };
+        }
+
+        function toProperCase(str) {
+            return str.replace(/\w\S*/g, function(txt) {
+                return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+            });
         }
 
         function populateFilters(data) {
@@ -222,7 +234,7 @@
                 responseTime: [1, 2, 3, 2, 1, 2],
                 categories: [['Hardware', 5], ['Software', 3], ['Red', 2]],
                 assessors: ['Asesor 1', 'Asesor 2'],
-                companies: [['Empresa A', 5], ['Empresa B', 3]],
+                companies: [['EMPRESA A', 5], ['EMPRESA B', 3]],
                 users: [['Usuario 1', 4], ['Usuario 2', 3]],
                 tickets: [] // Ejemplo de datos de tickets
             };
