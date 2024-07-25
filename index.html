@@ -40,6 +40,7 @@
                     <!-- Opciones dinámicas de año -->
                 </select>
                 <select id="categoryFilter" class="p-2 border rounded">
+                    <option value="">Todas las categorías</option>
                     <!-- Opciones dinámicas de categoría -->
                 </select>
             </div>
@@ -59,6 +60,7 @@
                 const data = await response.json();
                 console.log('Datos cargados:', data); // Añade esta línea para verificar los datos en la consola
                 globalData = processData(data);
+                globalData.tickets = data.tickets; // Asegurarnos de que globalData.tickets esté definido
                 populateFilters(globalData);
                 applyFilters(); // Aplica los filtros iniciales para el año actual
                 updateLastUpdated(data.last_updated);
@@ -119,6 +121,10 @@
             const yearFilter = document.getElementById('yearFilter');
             const categoryFilter = document.getElementById('categoryFilter');
 
+            // Limpiar las opciones anteriores
+            yearFilter.innerHTML = '';
+            categoryFilter.innerHTML = '<option value="">Todas las categorías</option>';
+
             const years = Object.keys(data.ticketsByMonth).sort((a, b) => b - a);
             years.forEach(year => {
                 const option = document.createElement('option');
@@ -133,6 +139,9 @@
                 option.textContent = category;
                 categoryFilter.appendChild(option);
             });
+
+            // Seleccionar el año actual por defecto
+            yearFilter.value = new Date().getFullYear();
         }
 
         function updateLastUpdated(timestamp) {
@@ -148,16 +157,17 @@
                 lastUpdated: new Date().toISOString(),
                 ticketsByMonth: {
                     '2024': {
-                        0: { month: 'Enero', opened: 12, closed: 10 },
-                        1: { month: 'Febrero', opened: 19, closed: 15 },
-                        2: { month: 'Marzo', opened: 3, closed: 5 },
-                        3: { month: 'Abril', opened: 5, closed: 4 },
-                        4: { month: 'Mayo', opened: 2, closed: 3 },
-                        5: { month: 'Junio', opened: 3, closed: 2 }
+                        0: { month: 0, opened: 12, closed: 10 },
+                        1: { month: 1, opened: 19, closed: 15 },
+                        2: { month: 2, opened: 3, closed: 5 },
+                        3: { month: 3, opened: 5, closed: 4 },
+                        4: { month: 4, opened: 2, closed: 3 },
+                        5: { month: 5, opened: 3, closed: 2 }
                     }
                 },
                 responseTime: [1, 2, 3, 2, 1, 2],
-                categories: ['Hardware', 'Software', 'Red', 'Otro']
+                categories: ['Hardware', 'Software', 'Red', 'Otro'],
+                tickets: [] // Ejemplo de datos de tickets
             };
             populateFilters(globalData);
             applyFilters();
@@ -176,8 +186,8 @@
                 filteredData.ticketsByMonth = Object.fromEntries(Object.entries(filteredData.ticketsByMonth).map(([month, data]) => {
                     return [month, {
                         ...data,
-                        opened: data.opened, // Implementar lógica para filtrar por categoría si es necesario
-                        closed: data.closed
+                        opened: globalData.tickets.filter(ticket => new Date(ticket["Fecha de creación"]).getFullYear() == yearFilter && new Date(ticket["Fecha de creación"]).getMonth() == month && ticket["Temas de ayuda"] == categoryFilter).length,
+                        closed: globalData.tickets.filter(ticket => new Date(ticket["Fecha de creación"]).getFullYear() == yearFilter && new Date(ticket["Fecha de creación"]).getMonth() == month && ticket["Temas de ayuda"] == categoryFilter && (ticket["Estado actual"] === "Cerrado" || ticket["Estado actual"] === "Resuelto")).length
                     }];
                 }));
             }
@@ -201,7 +211,7 @@
             new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: Object.values(filteredData.ticketsByMonth).map(d => d.month),
+                    labels: Object.values(filteredData.ticketsByMonth).map(d => new Date(0, d.month).toLocaleString('es-ES', { month: 'long' })),
                     datasets: [{
                         label: 'Tickets Abiertos',
                         data: Object.values(filteredData.ticketsByMonth).map(d => d.opened),
@@ -232,7 +242,7 @@
             new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: Object.values(filteredData.ticketsByMonth).map(d => d.month),
+                    labels: Object.values(filteredData.ticketsByMonth).map(d => new Date(0, d.month).toLocaleString('es-ES', { month: 'long' })),
                     datasets: [{
                         label: 'Tiempo de Respuesta Promedio (horas)',
                         data: filteredData.responseTime,
