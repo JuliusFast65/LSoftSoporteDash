@@ -61,14 +61,27 @@
 
         async function loadData() {
             try {
-                const response = await fetch('https://api.example.com/listosoft-data');
+                // Cambiamos la URL para cargar el archivo JSON desde el repositorio
+                const response = await fetch('data/support_data.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
                 globalData = data;
                 updateCharts();
+                updateLastUpdated(data.lastUpdated);
             } catch (error) {
                 console.error('Error al cargar los datos:', error);
                 alert('Error al cargar los datos. Usando datos de ejemplo.');
                 useExampleData();
+            }
+        }
+
+        function updateLastUpdated(timestamp) {
+            const lastUpdatedElement = document.getElementById('lastUpdated');
+            if (lastUpdatedElement) {
+                const date = new Date(timestamp);
+                lastUpdatedElement.textContent = `Última actualización: ${date.toLocaleString()}`;
             }
         }
 
