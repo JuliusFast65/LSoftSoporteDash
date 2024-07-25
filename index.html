@@ -9,7 +9,21 @@
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold text-center mb-8">Dashboard de Soporte Listosoft</h1>
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold">Dashboard de Soporte Listosoft</h1>
+            <div class="flex items-center space-x-4">
+                <select id="yearFilter" class="p-2 border rounded">
+                    <!-- Opciones dinámicas de año -->
+                </select>
+                <select id="categoryFilter" class="p-2 border rounded">
+                    <option value="">Todas las categorías</option>
+                    <!-- Opciones dinámicas de categoría -->
+                </select>
+                <button id="loadDataBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    Cargar Nuevos Datos
+                </button>
+            </div>
+        </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div class="bg-white p-6 rounded-lg shadow">
@@ -25,25 +39,6 @@
         <div class="bg-white p-6 rounded-lg shadow mb-8">
             <h2 class="text-xl font-semibold mb-4">Distribución de Tickets por Categoría</h2>
             <canvas id="categoryChart"></canvas>
-        </div>
-        
-        <div class="flex justify-center mb-8">
-            <button id="loadDataBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                Cargar Nuevos Datos
-            </button>
-        </div>
-        
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h2 class="text-xl font-semibold mb-4">Filtros</h2>
-            <div class="flex flex-wrap gap-4">
-                <select id="yearFilter" class="p-2 border rounded">
-                    <!-- Opciones dinámicas de año -->
-                </select>
-                <select id="categoryFilter" class="p-2 border rounded">
-                    <option value="">Todas las categorías</option>
-                    <!-- Opciones dinámicas de categoría -->
-                </select>
-            </div>
         </div>
     </div>
 
