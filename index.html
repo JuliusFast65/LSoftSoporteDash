@@ -61,19 +61,59 @@
 
         async function loadData() {
             try {
-                const response = await fetch('data/tickets_data.json');
+                const response = await fetch('data/tickets_data.json'); // Cambia a la URL correcta
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
-                globalData = data;
+                console.log('Datos cargados:', data); // Añade esta línea para verificar los datos en la consola
+                globalData = processData(data);
                 updateCharts();
-                updateLastUpdated(data.lastUpdated);
+                updateLastUpdated(data.last_updated);
             } catch (error) {
                 console.error('Error al cargar los datos:', error);
                 alert('Error al cargar los datos. Usando datos de ejemplo.');
                 useExampleData();
             }
+        }
+
+        function processData(data) {
+            const ticketsByMonth = {};
+            const responseTime = [];
+            const categories = {};
+
+            data.tickets.forEach(ticket => {
+                const month = new Date(ticket["Fecha de creación"]).getMonth();
+                if (!ticketsByMonth[month]) {
+                    ticketsByMonth[month] = { month: month, opened: 0, closed: 0 };
+                }
+                ticketsByMonth[month].opened += 1;
+                if (ticket["Estado actual"] === "Cerrado" || ticket["Estado actual"] === "Resuelto") {
+                    ticketsByMonth[month].closed += 1;
+                }
+                const category = ticket["Temas de ayuda"];
+                if (!categories[category]) {
+                    categories[category] = 0;
+                }
+                categories[category] += 1;
+            });
+
+            return {
+                ticketsByMonth: Object.values(ticketsByMonth),
+                responseTime: calculateResponseTime(data.tickets),
+                categories: categories
+            };
+        }
+
+        function calculateResponseTime(tickets) {
+            const responseTimes = [];
+            tickets.forEach(ticket => {
+                const creationTime = new Date(ticket["Fecha de creación"]);
+                const closingTime = new Date(ticket["Última actualización"]);
+                const responseTime = (closingTime - creationTime) / 3600000; // Convertir a horas
+                responseTimes.push(responseTime);
+            });
+            return responseTimes;
         }
 
         function updateLastUpdated(timestamp) {
@@ -88,12 +128,12 @@
             globalData = {
                 lastUpdated: new Date().toISOString(),
                 ticketsByMonth: [
-                    {month: 'Enero', opened: 12, closed: 10},
-                    {month: 'Febrero', opened: 19, closed: 15},
-                    {month: 'Marzo', opened: 3, closed: 5},
-                    {month: 'Abril', opened: 5, closed: 4},
-                    {month: 'Mayo', opened: 2, closed: 3},
-                    {month: 'Junio', opened: 3, closed: 2}
+                    { month: 'Enero', opened: 12, closed: 10 },
+                    { month: 'Febrero', opened: 19, closed: 15 },
+                    { month: 'Marzo', opened: 3, closed: 5 },
+                    { month: 'Abril', opened: 5, closed: 4 },
+                    { month: 'Mayo', opened: 2, closed: 3 },
+                    { month: 'Junio', opened: 3, closed: 2 }
                 ],
                 responseTime: [1, 2, 3, 2, 1, 2],
                 categories: {
@@ -114,6 +154,11 @@
         }
 
         function updateTicketsChart() {
+            if (!globalData.ticketsByMonth || !Array.isArray(globalData.ticketsByMonth)) {
+                console.error('La estructura de datos de ticketsByMonth es incorrecta:', globalData.ticketsByMonth);
+                return;
+            }
+
             const ctx = document.getElementById('ticketsChart').getContext('2d');
             new Chart(ctx, {
                 type: 'bar',
@@ -215,7 +260,7 @@
             const categoryFilter = document.getElementById('categoryFilter').value;
             
             // Aquí implementarías la lógica para filtrar los datos según los valores seleccionados
-            console.log('Filtros aplicados:', {month: monthFilter, category: categoryFilter});
+            console.log('Filtros aplicados:', { month: monthFilter, category: categoryFilter });
             // Después de filtrar, llamarías a updateCharts() con los datos filtrados
         }
 
