@@ -15,6 +15,10 @@
                 <select id="yearFilter" class="p-2 border rounded">
                     <!-- Opciones dinámicas de año -->
                 </select>
+                <select id="monthFilter" class="p-2 border rounded">
+                    <option value="">Todos los meses</option>
+                    <!-- Opciones dinámicas de mes -->
+                </select>
                 <select id="categoryFilter" class="p-2 border rounded">
                     <option value="">Todas las categorías</option>
                     <!-- Opciones dinámicas de categoría -->
@@ -94,7 +98,7 @@
 
         function processData(data) {
             const excludedAssessors = ["1", "53", "27", "15", "35", "38", "Julio Veloz"];
-            const excludedUsers = ["(Mail Delivery System)"];
+            const excludedUsers = ["(Mail Delivery System)", "Mail Delivery System"];
             const ticketsByMonth = {};
             const responseTime = [];
             const categories = new Map();
@@ -176,11 +180,13 @@
 
         function populateFilters(data) {
             const yearFilter = document.getElementById('yearFilter');
+            const monthFilter = document.getElementById('monthFilter');
             const categoryFilter = document.getElementById('categoryFilter');
             const assessorFilter = document.getElementById('assessorFilter');
 
             // Limpiar las opciones anteriores
             yearFilter.innerHTML = '';
+            monthFilter.innerHTML = '<option value="">Todos los meses</option>';
             categoryFilter.innerHTML = '<option value="">Todas las categorías</option>';
             assessorFilter.innerHTML = '<option value="">Todos los asesores</option>';
 
@@ -190,6 +196,14 @@
                 option.value = year;
                 option.textContent = year;
                 yearFilter.appendChild(option);
+            });
+
+            const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            months.forEach((month, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = month;
+                monthFilter.appendChild(option);
             });
 
             data.categories.forEach(([category]) => {
@@ -245,6 +259,7 @@
 
         function applyFilters() {
             const yearFilter = document.getElementById('yearFilter').value || new Date().getFullYear();
+            const monthFilter = document.getElementById('monthFilter').value;
             const categoryFilter = document.getElementById('categoryFilter').value;
             const assessorFilter = document.getElementById('assessorFilter').value;
 
@@ -254,13 +269,13 @@
             filteredData.companies = globalData.companies;
             filteredData.users = globalData.users;
 
-            if (categoryFilter || assessorFilter) {
+            if (monthFilter || categoryFilter || assessorFilter) {
                 filteredData.ticketsByMonth = Object.fromEntries(Object.entries(filteredData.ticketsByMonth).map(([month, data]) => {
                     const ticketsFiltered = globalData.tickets.filter(ticket => {
                         const ticketYear = new Date(ticket["Fecha de creación"]).getFullYear();
                         const ticketMonth = new Date(ticket["Fecha de creación"]).getMonth();
                         const matchesYear = ticketYear == yearFilter;
-                        const matchesMonth = ticketMonth == month;
+                        const matchesMonth = monthFilter ? ticketMonth == monthFilter : true;
                         const matchesCategory = categoryFilter ? ticket["Temas de ayuda"] == categoryFilter : true;
                         const matchesAssessor = assessorFilter ? ticket["Agente asignado"] == assessorFilter : true;
                         return matchesYear && matchesMonth && matchesCategory && matchesAssessor;
@@ -399,7 +414,7 @@
                 casesByAssessorChart.destroy();
             }
 
-            const assessorData = globalData.assessors.map(assessor => {
+            const assessorData = globalData.assessors.filter(assessor => !["1", "53", "27", "15", "35", "38", "Julio Veloz"].includes(assessor)).map(assessor => {
                 return globalData.tickets.filter(ticket => ticket["Agente asignado"] === assessor).length;
             });
 
@@ -407,7 +422,7 @@
             casesByAssessorChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: globalData.assessors,
+                    labels: globalData.assessors.filter(assessor => !["1", "53", "27", "15", "35", "38", "Julio Veloz"].includes(assessor)),
                     datasets: [{
                         label: 'Casos Atendidos',
                         data: assessorData,
@@ -432,7 +447,7 @@
                 averageTimeByAssessorChart.destroy();
             }
 
-            const assessorData = globalData.assessors.map(assessor => {
+            const assessorData = globalData.assessors.filter(assessor => !["1", "53", "27", "15", "35", "38", "Julio Veloz"].includes(assessor)).map(assessor => {
                 const tickets = globalData.tickets.filter(ticket => ticket["Agente asignado"] === assessor);
                 const totalResponseTime = tickets.reduce((sum, ticket) => {
                     const creationTime = new Date(ticket["Fecha de creación"]);
@@ -446,7 +461,7 @@
             averageTimeByAssessorChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: globalData.assessors,
+                    labels: globalData.assessors.filter(assessor => !["1", "53", "27", "15", "35", "38", "Julio Veloz"].includes(assessor)),
                     datasets: [{
                         label: 'Tiempo Promedio de Atención (minutos)',
                         data: assessorData,
@@ -544,6 +559,7 @@
 
         document.getElementById('loadDataBtn').addEventListener('click', loadData);
         document.getElementById('yearFilter').addEventListener('change', applyFilters);
+        document.getElementById('monthFilter').addEventListener('change', applyFilters);
         document.getElementById('categoryFilter').addEventListener('change', applyFilters);
         document.getElementById('assessorFilter').addEventListener('change', applyFilters);
 
