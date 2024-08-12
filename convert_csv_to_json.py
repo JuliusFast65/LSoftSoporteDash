@@ -5,7 +5,8 @@ import os
 
 def convert_csv_to_json():
     """Convierte el archivo CSV a un archivo JSON completo."""
-    csv_file_path = "data/Cerrados Tickets - 20240725.csv"
+    " csv_file_path = "data/Cerrados Tickets - 20240725.csv"
+    csv_file_path = "data/Tickets.csv"
     json_file_path = "data/tickets_data.json"
     
     tickets_data = []
